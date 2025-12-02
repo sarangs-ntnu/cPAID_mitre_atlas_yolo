@@ -68,49 +68,6 @@ class UltralyticsYolov5Backend:
         return detections
 
 
-class ArtSpatialSmoothingWrapper:
-    """Optional ART-based smoothing preprocessor around any detection backend.
-
-    This wrapper uses ``adversarial-robustness-toolbox`` to apply a simple
-    spatial smoothing defence before delegating to the configured backend. It
-    is useful when you want a lightweight robustness measure without modifying
-    the downstream detection code. Because ART is an optional dependency, the
-    imports happen lazily and produce an informative error if missing.
-    """
-
-    def __init__(self, delegate: DetectionBackend, window_size: int = 3) -> None:
-        try:  # pragma: no cover - optional import path
-            import numpy as np
-            from PIL import Image
-            from art.defences.preprocessor.spatial_smoothing import SpatialSmoothing
-        except Exception as exc:  # pragma: no cover - optional import path
-            raise ImportError(
-                "ArtSpatialSmoothingWrapper requires adversarial-robustness-toolbox, numpy, and pillow. "
-                "Install via `pip install -e .[art]`."
-            ) from exc
-
-        self.delegate = delegate
-        self.window_size = window_size
-        self._np = np
-        self._Image = Image
-        self._preprocessor = SpatialSmoothing(window_size=window_size)
-
-    def _smooth_image(self, image_path: str) -> Path:  # pragma: no cover - exercised with optional deps
-        image = self._Image.open(image_path).convert("RGB")
-        array = self._np.asarray(image).astype("float32") / 255.0
-        smoothed, _ = self._preprocessor(array[None])
-        smoothed_image = self._Image.fromarray((smoothed[0] * 255).astype("uint8"))
-        tmp_path = Path(image_path).with_suffix(".smoothed.png")
-        smoothed_image.save(tmp_path)
-        return tmp_path
-
-    def predict(self, image_path: str) -> Iterable[Detection]:  # pragma: no cover - exercised with optional deps
-        smoothed_path = self._smooth_image(image_path)
-        detections = list(self.delegate.predict(str(smoothed_path)))
-        smoothed_path.unlink(missing_ok=True)
-        return detections
-
-
 @dataclass(frozen=True)
 class AnalysisResult:
     """Bundle detection outputs with the relevant mitigation plans."""
@@ -153,16 +110,9 @@ def main() -> None:  # pragma: no cover - exercised by users via CLI
     parser.add_argument("image", help="Path to an image file to analyze")
     parser.add_argument("--model", default="yolov5s", help="YOLOv5 model variant to load (default: yolov5s)")
     parser.add_argument("--device", default="cpu", help="Device passed to the YOLO model (cpu or cuda)")
-    parser.add_argument(
-        "--art-spatial-smoothing",
-        action="store_true",
-        help="Enable ART SpatialSmoothing preprocessing (requires optional art extras)",
-    )
     args = parser.parse_args()
 
-    backend: DetectionBackend = UltralyticsYolov5Backend(model_name=args.model, device=args.device)
-    if args.art_spatial_smoothing:
-        backend = ArtSpatialSmoothingWrapper(delegate=backend)
+    backend = UltralyticsYolov5Backend(model_name=args.model, device=args.device)
     analyzer = MaritimeImageAnalyzer(backend=backend)
     result = analyzer.analyze_image(args.image)
     print(result.summary())

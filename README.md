@@ -34,12 +34,6 @@ If you want to run the YOLOv5-powered analyzer, install the optional dependencie
 pip install -e .[yolo]
 ```
 
-To add Trusted-AI `adversarial-robustness-toolbox` (ART) preprocessing for spatial smoothing experiments, also install:
-
-```bash
-pip install -e .[art]
-```
-
 ### Usage (library)
 The `atlas_mapping` package exposes the milliAmpere2 profile and a planner to bind tactics and defences to perception nodes.
 
@@ -69,12 +63,12 @@ The resulting output lists each perception node, its responsibilities, mapped th
    python -m atlas_mapping.image_analyzer path/to/maritime_image.jpg
    ```
 
-3. (Optional) Enable ART spatial smoothing and choose a different YOLOv5 model or device (CPU/GPU):
+3. (Optional) Choose a different YOLOv5 model or device (CPU/GPU):
    ```bash
-   python -m atlas_mapping.image_analyzer path/to/maritime_image.jpg --model yolov5m --device cuda --art-spatial-smoothing
+   python -m atlas_mapping.image_analyzer path/to/maritime_image.jpg --model yolov5m --device cuda
    ```
 
-The CLI loads a YOLOv5 model via `torch.hub`, performs detections on the supplied image, and prints the detections alongside the ATLAS mitigation plans for the milliAmpere2 perception stack. With `--art-spatial-smoothing`, the image is first processed by ART’s SpatialSmoothing defence before being sent to YOLO. It works with any maritime image file path you provide.
+The CLI loads a YOLOv5 model via `torch.hub`, performs detections on the supplied image, and prints the detections alongside the ATLAS mitigation plans for the milliAmpere2 perception stack. It works with any maritime image file path you provide.
 
 ### Try it interactively in Jupyter
 Open the ready-made notebook to explore the mapping and analyzer outputs cell by cell:
